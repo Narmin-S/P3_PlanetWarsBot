@@ -40,6 +40,7 @@ def setup_behavior_tree():
     root.child_nodes = [offensive_plan, spread_sequence, reinforce, closest_attack]
 
     logging.info('\n' + root.tree_to_string())
+    print(root.tree_to_string())
     return root
 
 # You don't need to change this function
