@@ -42,21 +42,23 @@ def spread_to_weakest_neutral_planet(state):
 
 
 def reinforce_weakest_my_planet(state):
-    # If no planets or only one planet, skip
-    my_planets = state.my_planets()
+    my_planets = state.my_planets() # Get a list of all our planets
+
+    # Only reinforce if we have at least 2 planets and no fleet already in flight
     if len(my_planets) < 2 or len(state.my_fleets()) >= 1:
         return False
 
     # Find weakest and strongest planets
-    weakest = min(my_planets, key=lambda p: p.num_ships, default=None)
-    strongest = max(my_planets, key=lambda p: p.num_ships, default=None)
+    weakest_planet = min(my_planets, key=lambda p: p.num_ships, default=None)
+    strongest_planet = max(my_planets, key=lambda p: p.num_ships, default=None)
 
-    if weakest.ID == strongest.ID or strongest.num_ships < 20:
-        return False  # nothing to reinforce or too few ships to help
+    # Don't reinforce the same planet or if we don't have enough ships
+    if weakest_planet.ID == strongest_planet.ID or strongest_planet.num_ships < 20:
+        return False
 
-    # Send 1/3 of ships to weakest planet
-    num_to_send = strongest.num_ships // 3
-    return issue_order(state, strongest.ID, weakest.ID, num_to_send)
+    # Send 1/3 of ships from strongest to weakest planet
+    num_to_send = strongest_planet.num_ships // 3
+    return issue_order(state, strongest_planet.ID, weakest_planet.ID, num_to_send)
 
 
 def attack_closest_enemy_planet(state):
