@@ -3,28 +3,28 @@ sys.path.insert(0, '../')
 from planet_wars import issue_order
 
 
-def attack_weakest_enemy_planet(state):
-    # (1) If we currently have a fleet in flight, abort plan.
-    if len(state.my_fleets()) >= 1:
+def attack_weakest_enemy_planet(state): #provided functionality
+    # Don't wait for fleets - be aggressive like successful bots!
+    if len(state.my_fleets()) >= 3:
         return False
-
-    # (2) Find my strongest planet.
+    # Find our strongest planet
     strongest_planet = max(state.my_planets(), key=lambda t: t.num_ships, default=None)
-
-    # (3) Find the weakest enemy planet.
-    weakest_planet = min(state.enemy_planets(), key=lambda t: t.num_ships, default=None)
-
-    if not strongest_planet or not weakest_planet:
-        # No legal source or destination
+    
+    # Find weakest enemy planet not already being attacked
+    enemy_planets = [t for t in state.enemy_planets() 
+                    if not any(fleet.destination_planet == t.ID for fleet in state.my_fleets())]
+    
+    if not strongest_planet or not enemy_planets:
         return False
     else:
+        weakest_planet = min(state.enemy_planets(), key=lambda t: t.num_ships, default=None)
         # (4) Send half the ships from my strongest planet to the weakest enemy planet.
         return issue_order(state, strongest_planet.ID, weakest_planet.ID, strongest_planet.num_ships / 2)
 
 
-def spread_to_weakest_neutral_planet(state):
-    # (1) If we currently have a fleet in flight, just do nothing.
-    if len(state.my_fleets()) >= 1:
+def spread_to_weakest_neutral_planet(state):#provided functionality
+    # Allow multiple fleets for rapid expansion
+    if len(state.my_fleets()) >= 2:
         return False
 
     # (2) Find my strongest planet.
@@ -39,6 +39,49 @@ def spread_to_weakest_neutral_planet(state):
     else:
         # (4) Send half the ships from my strongest planet to the weakest enemy planet.
         return issue_order(state, strongest_planet.ID, weakest_planet.ID, strongest_planet.num_ships / 2)
+    
+def spread_to_nearest_weak_planet(state): # it's meant to conquer nearest smallest planet!
+    # Allow some fleets but not too many
+    if len(state.my_fleets()) >= 2:
+        return False
+
+    my_planets = state.my_planets()
+    other_planets = state.not_my_planets()
+
+    if not my_planets or not other_planets:
+        return False
+
+    best_source, best_target = None, None
+    best_score = -1  # Use scoring instead of just distance
+
+    # Check every pair for the best opportunity
+    for src in my_planets:
+        if src.num_ships <= 8:  # Need fewer ships to keep more aggressive
+            continue
+        
+        for tgt in other_planets:
+            # Skip targets that are too strong
+            if tgt.num_ships >= src.num_ships - 5:
+                continue
+            
+            # Calculate a score: lower distance and weaker target = better
+            distance = state.distance(src.ID, tgt.ID)
+            # Score favors close, weak targets
+            score = (src.num_ships - tgt.num_ships) / (distance + 1)
+
+            if score > best_score:
+                best_source = src
+                best_target = tgt
+                best_score = score
+
+    # Send optimal number of ships
+    if best_source and best_target:
+        ships_needed = best_target.num_ships + 3
+        ships_to_send = min(ships_needed, best_source.num_ships - 3)
+        if ships_to_send > 0:
+            return issue_order(state, best_source.ID, best_target.ID, ships_to_send)
+
+    return False
 
 
 def reinforce_weakest_my_planet(state):
@@ -61,38 +104,44 @@ def reinforce_weakest_my_planet(state):
     return issue_order(state, strongest_planet.ID, weakest_planet.ID, num_to_send)
 
 
-def attack_closest_enemy_planet(state):
-    # (1) If we already have a fleet in flight, skip this behavior.
-    if len(state.my_fleets()) >= 1:
+def attack_closest_enemy_planet(state): #needs improvement but is currently ok :)
+    # Allow some fleets for opportunistic attacks
+    if len(state.my_fleets()) >= 2:
         return False
 
-    # (2) Get all our planets and enemy planets.
     my_planets = state.my_planets()
     enemy_planets = state.enemy_planets()
 
-    # (3) If either list is empty, there's nothing to attack or attack from.
     if not my_planets or not enemy_planets:
         return False
 
-    # (4) Initialize variables to track the closest source-target pair.
     best_source, best_target = None, None
-    min_distance = float('inf')  # Start with an infinitely large distance.
+    best_score = -1
 
-    # (5) Check every pair of our planets and enemy planets.
+    # Look for good attack opportunities
     for src in my_planets:
+        if src.num_ships <= 12:  # Need enough ships to attack
+            continue
+            
         for tgt in enemy_planets:
-            dist = state.distance(src.ID, tgt.ID)  # Compute distance between the pair.
-
-            # (6) Only consider attacking if our source planet has more than 10 ships.
-            if dist < min_distance and src.num_ships > 10:
-                # (7) Update the closest valid attack pair found so far.
+            # Only attack if we can win
+            if tgt.num_ships >= src.num_ships - 5:
+                continue
+                
+            distance = state.distance(src.ID, tgt.ID)
+            # Prefer close, weak targets
+            score = (src.num_ships - tgt.num_ships) / (distance + 1)
+            
+            if score > best_score:
                 best_source = src
                 best_target = tgt
-                min_distance = dist
+                best_score = score
 
-    # (8) If we found a valid pair, send half the ships to attack the closest enemy.
+    # Attack with optimal force
     if best_source and best_target:
-        return issue_order(state, best_source.ID, best_target.ID, best_source.num_ships / 2)
+        ships_needed = best_target.num_ships + 4
+        ships_to_send = min(ships_needed, best_source.num_ships - 4)
+        if ships_to_send > 0:
+            return issue_order(state, best_source.ID, best_target.ID, ships_to_send)
 
-    # (9) If no suitable target found, skip this behavior.
     return False
