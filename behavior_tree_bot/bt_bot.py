@@ -22,38 +22,28 @@ from planet_wars import PlanetWars, finish_turn
 # You have to improve this tree or create an entire new one that is capable
 # of winning against all the 5 opponent bots
 def setup_behavior_tree():
-    # Top-down construction of behavior tree
     root = Selector(name='High Level Ordering of Strategies')
 
-    
     offensive_plan = Sequence(name='Offensive Strategy')
-    larger_fleet_check = Check(have_larger_fleet)
-    attack = Action(attack_weakest_enemy_planet)
-    offensive_plan.child_nodes = [larger_fleet_check, attack]
-
-    spread_sequence = Sequence(name='Spread Strategy')
-    neutral_planet_check = Check(if_neutral_planet_available)
-    spread_action = Action(spread_to_weakest_neutral_planet)
-    spread_sequence.child_nodes = [neutral_planet_check, spread_action]
-    
-
-    # Simple fallback action
-    reinforce = Action(reinforce_weakest_my_planet)
+    offensive_plan.child_nodes = [Check(have_larger_fleet), Action(attack_weakest_enemy_planet)]
 
     expand = Action(spread_to_nearest_weak_planet)
-
-    #This wins easy_bot and defensive_bot
-    #root.child_nodes = [offensive_plan, expand, spread_sequence, reinforce, expand]
     
-    #This wins easy_bot 
-    root.child_nodes = [spread_sequence, offensive_plan, reinforce, expand]
+    spread = Sequence(name='Spread Strategy')
+    spread.child_nodes = [Check(if_neutral_planet_available), Action(spread_to_weakest_neutral_planet)]
 
-    #But this wins defensive_bot
-    # root.child_nodes = [offensive_plan, spread_sequence, reinforce, expand]
+    attack_closest = Action(attack_closest_enemy_planet)
+    reinforce = Action(reinforce_weakest_my_planet)
+
+    root.child_nodes = [
+        expand,                 # priority 1: grab weak planets early
+        offensive_plan,         # priority 2: attack if we're stronger
+        spread,                 # priority 3: standard spread
+        attack_closest,         # fallback attack
+        reinforce,              # last resort
+    ]
 
     logging.info('\n' + root.tree_to_string())
-    # Will fix print later :3
-    # print(root.tree_to_string())
     return root
 
 # You don't need to change this function
