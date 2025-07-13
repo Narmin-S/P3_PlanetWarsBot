@@ -40,46 +40,39 @@ def spread_to_weakest_neutral_planet(state):#provided functionality
         # (4) Send half the ships from my strongest planet to the weakest enemy planet.
         return issue_order(state, strongest_planet.ID, weakest_planet.ID, strongest_planet.num_ships / 2)
     
-def spread_to_nearest_weak_planet(state): # it's meant to conquer nearest smallest planet!
-    # Allow some fleets but not too many
-    if len(state.my_fleets()) >= 2:
+def spread_to_nearest_weak_planet(state):
+    if len(state.my_fleets()) >= 5:
         return False
 
     my_planets = state.my_planets()
-    other_planets = state.not_my_planets()
+    targets = state.not_my_planets()
 
-    if not my_planets or not other_planets:
+    if not my_planets or not targets:
         return False
 
-    best_source, best_target = None, None
-    best_score = -1  # Use scoring instead of just distance
+    best_src = None
+    best_tgt = None
+    best_score = float('-inf')
 
-    # Check every pair for the best opportunity
     for src in my_planets:
-        if src.num_ships <= 8:  # Need fewer ships to keep more aggressive
+        if src.num_ships <= 15:
             continue
-        
-        for tgt in other_planets:
-            # Skip targets that are too strong
-            if tgt.num_ships >= src.num_ships - 5:
+        for tgt in targets:
+            if tgt.num_ships >= src.num_ships:
                 continue
-            
-            # Calculate a score: lower distance and weaker target = better
+
             distance = state.distance(src.ID, tgt.ID)
-            # Score favors close, weak targets
-            score = (src.num_ships - tgt.num_ships) / (distance + 1)
+            # NEW: prioritize growth rate more heavily
+            score = (src.num_ships - tgt.num_ships) + (tgt.growth_rate * 2) - (distance)
 
             if score > best_score:
-                best_source = src
-                best_target = tgt
+                best_src = src
+                best_tgt = tgt
                 best_score = score
 
-    # Send optimal number of ships
-    if best_source and best_target:
-        ships_needed = best_target.num_ships + 3
-        ships_to_send = min(ships_needed, best_source.num_ships - 3)
-        if ships_to_send > 0:
-            return issue_order(state, best_source.ID, best_target.ID, ships_to_send)
+    if best_src and best_tgt:
+        ships_to_send = min(tgt.num_ships + 1, src.num_ships - 1)
+        return issue_order(state, best_src.ID, best_tgt.ID, ships_to_send)
 
     return False
 
