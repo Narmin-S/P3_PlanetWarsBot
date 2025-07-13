@@ -46,10 +46,10 @@ def setup_behavior_tree():
     #root.child_nodes = [offensive_plan, expand, spread_sequence, reinforce, expand]
     
     #This wins easy_bot 
-    root.child_nodes = [offensive_plan, spread_sequence, reinforce, expand]
+    root.child_nodes = [spread_sequence, offensive_plan, reinforce, expand]
 
     #But this wins defensive_bot
-    # root.child_nodes = [spread_sequence, offensive_plan, reinforce, expand]
+    # root.child_nodes = [offensive_plan, spread_sequence, reinforce, expand]
 
     logging.info('\n' + root.tree_to_string())
     # Will fix print later :3
